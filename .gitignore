@@ -1,0 +1,19 @@
+/.bundle/
+/log/*.log
+/pkg/
+/tmp/
+.DS_Store
+
+# test
+/test/dummy/log/*.log
+/test/dummy/storage/
+/test/dummy/tmp/
+/test/dummy/ariadne/
+
+.byebug_history
+
+# builds
+ariadne-*.gem
+
+# log
+thread.log
