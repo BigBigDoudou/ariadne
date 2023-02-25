@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
 require "open3"
-require "ariadne/helpers/text"
-require "ariadne/helpers/value_format"
+require "ariadne/string/color"
 
 module Ariadne
   class Log
-    include Helpers::Text
-    include Helpers::ValueFormat
-
     def initialize(seam)
       @seam = seam
     end
@@ -26,54 +22,68 @@ module Ariadne
 
     def text
       @text ||=
-        Text(
-          [
-            rank,
-            " ",
-            depth_dashes,
-            class_name,
-            prefix,
-            method_name,
-            parameters,
-            return_value
-          ].join
-        )
+        [
+          rank,
+          " ",
+          depth_dashes,
+          class_name,
+          prefix,
+          method_name,
+          parameters,
+          return_value_type
+        ].join
     end
 
     def rank
-      Text(@seam.rank.to_s.rjust(4)).gray
+      @seam.rank.to_s.rjust(4).gray
     end
 
     def depth_dashes
-      Text("-" * @seam.depth).gray.tap { _1 << " " if @seam.depth.positive? }
+      ("-" * @seam.depth).gray.tap { _1 << " " if @seam.depth.positive? }
     end
 
     def class_name
-      Text(@seam.klass.name).green
+      @seam.klass.name.green
     end
 
     def prefix
-      Text(@seam.prefix).gray
+      @seam.prefix.gray
     end
 
     def method_name
-      Text(@seam.method_name).cyan
+      @seam.method_name.to_s.cyan
     end
 
-    def return_value
-      value = Text(cast(@seam.return_value)).truncate(50)
-      value = type(@seam.return_value) ? "<#{type(@seam.return_value)}> #{value}" : value
-      Text(" -> #{value}").yellow
+    def return_value_type
+      value = type(@seam.return_value)
+      " -> #{value}".yellow
     end
 
     def parameters
-      str =
-        @seam.parameters.map do |parameter|
-          arg = Text(cast(parameter.arg)).truncate(50)
-          arg = type(parameter.arg) ? "<#{type(parameter.arg)}> #{arg}" : arg
-          "#{parameter.param}: #{arg}"
-        end.join(", ")
-      Text(str.empty? ? "" : "(#{str})").magenta
+      return if @seam.parameters.empty?
+
+      [
+        "(",
+        @seam.parameters.flat_map { "#{_1.param}:  #{arg(_1)}" }.join(", "),
+        ")"
+      ].join.magenta
+    end
+
+    def arg(parameter)
+      if parameter.type == :rest || %i[* ** &].include?(parameter.param)
+        parameter.arg.map { type(_1) }.join(", ")
+      else
+        type(parameter.arg)
+      end
+    end
+
+    def type(arg)
+      case arg
+      when "<?>" then "<?>"
+      when TrueClass, FalseClass then "Boolean"
+      when NilClass then "nil"
+      else arg.class.to_s
+      end
     end
   end
 end

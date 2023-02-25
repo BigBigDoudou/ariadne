@@ -25,34 +25,45 @@ thread = Ariadne::Thread.new(
 
 # Then, pass a block to the #call method to output the thread
 thread.call do
-  service = ExportService.new(ids: [42]).call
-  service.call
+  Services::CreateUsers.new(names: ["Jane Doe"]).call do |user|
+    user.role = :engineer
+    user.admin = true
+  end
 end
-#=> Output:
-#  0 ExportService#initialize(ids: [42]) -> [42]
-#  1 ExportService#call -> true
-#  2 - ExportService#get_records -> [#<User:42>]
-#  3 -- User.where(ids: [42]) -> [#<User:42>]
-#  4 - ExportService#to_hash -> [{:id=>42, :name=>"Jane Doe"}]
-# ...
+#  0 Services::CreateUsers#initialize(names: Array) -> Array
+#  1 Services::CreateUsers#call -> Boolean
+#  2 - User.build(name: String) -> User
+#  3 -- User#initialize(name: String) -> String
+#  4 -- User.generate_access_key -> Integer
+#  5 -- User#access_key=(value: Integer) -> Integer
+#  6 - User#role=(value: Symbol) -> Symbol
+#  7 - User#admin=(value: Boolean) -> Boolean
+#  8 - Services::CreateUsers#generate_email(user: User) -> String
+#  9 -- Services::GenerateEmail#initialize(user: User) -> User
+# 10 -- Services::GenerateEmail#call -> String
+# 11 --- Services::GenerateEmail#domain -> String
+# 12 - User#email=(value: String) -> String
+# 13 - User.import(users: Array) -> Boolean
+# 14 -- User#validate -> Boolean
+# 15 --- User#access_key? -> Boolean
 
 # read the seams (1 method call -> 1 seam)
 seams = thread.seams
-seams.size # 12
+seams.size # 16
 seams.map(&:depth).max # 3
-seams.map(&:klass).uniq # [ExportService, User]
+seams.map(&:klass).uniq # [Services::CreateUsers, User, Services::GenerateEmail]
 ```
 
 Reading the logs:
 
-* `0` is the iteration. Each time a method is called, it adds 1.
-* `---` is the depth (one dash by level of depth). It starts at 0. Each time a method is called inside another method, it adds a level of depth.
-* `ExportService` is the name of the class.
+* `8` is the iteration. Each time a method is called, it adds 1.
+* `-` is the depth (one dash by level of depth). It starts at 0. Each time a method is called inside another method, it adds a level of depth.
+* `Services::CreateUsers` is the name of the class.
 * `#` is the method prefix (`.` for a class method, `#` for an instance method).
-* `initialize` is the name of the method.
-* `ids` is the name of the parameter.
-* `[42]` is the argument passed for this parameter. If not a literal, the type is given (`<User>`).
-* `-> [42]` is the value returned by the method. If not a literal, the type is given (`<User>`).
+* `generate_email` is the name of the method.
+* `user` is the name of the parameter.
+* `User` is the type of the argument passed for this parameter.
+* `-> String` is the type of the value returned by the method.
 
 The logs are outputed in the terminal and in the `thread.log` file.
 

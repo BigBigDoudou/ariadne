@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require "open3"
-require "ariadne/parameter"
 
 module Ariadne
   class Seam
     attr_reader :rank, :depth, :klass, :method_name, :prefix, :parameters, :return_value, :binding, :path
+
+    Parameter = Struct.new(:type, :param, :arg)
 
     class << self
       # We cannot make public methods because accessing the TracePoint
@@ -44,11 +45,23 @@ module Ariadne
 
       def parameters(tracepoint)
         method = tracepoint.self.method(tracepoint.method_id)
-        method.parameters.map do |parameter|
-          Parameter.new(parameter, binding: tracepoint.binding)
+        if forwarded_parameters?(method)
+          [Parameter.new(:rest, "...", ["<?>"])]
+        else
+          method.parameters.flat_map do |parameter|
+            type = parameter.first
+            param = parameter.last
+            arg = %i[* ** &].include?(param) ? ["<?>"] : tracepoint.binding.local_variable_get(param)
+            Parameter.new(type, param, arg)
+          rescue NameError
+            Parameter.new(type, param, type == :rest ? ["<?>"] : "<?>")
+          end
         end
-      rescue NoMethodError
-        []
+      end
+
+      # return true if method's signature is like `def my_method(...)`
+      def forwarded_parameters?(method)
+        method.parameters == [%i[rest *], %i[block &]]
       end
 
       def path(tracepoint)

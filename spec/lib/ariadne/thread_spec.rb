@@ -10,9 +10,7 @@ RSpec.describe Ariadne::Thread do
   end
 
   let(:call) do
-    thread.call do
-      Services::CreateService.call(1, kwarg: 2) { User.build("Jane Doe") }
-    end
+    thread.call { Services::Example.new.call }
   end
 
   describe "#call" do
@@ -40,199 +38,55 @@ RSpec.describe Ariadne::Thread do
         {
           rank: 0,
           depth: 0,
-          klass: Services::CreateService,
+          klass: Services::Example,
           method_name: :call,
-          prefix: ".",
-          parameters: [
-            {
-              param: :args,
-              arg: [
-                1
-              ]
-            },
-            {
-              param: :kwargs,
-              arg: {
-                kwarg: 2
-              }
-            },
-            {
-              param: :block,
-              arg: kind_of(Proc)
-            }
-          ]
+          prefix: "#",
+          parameters: []
         },
         {
           rank: 1,
           depth: 1,
-          klass: Services::CreateService,
-          method_name: :initialize,
+          klass: Services::Example,
+          method_name: :method_with_args_and_kwargs,
           prefix: "#",
           parameters: [
-            {
-              param: :arg,
-              arg: 1
-            },
-            {
-              param: :kwarg,
-              arg: 2
-            }
+            { arg: 1, param: :a },
+            { arg: 2, param: :b },
+            { arg: "foo", param: :x },
+            { arg: "bar", param: :y }
           ]
         },
         {
           rank: 2,
-          depth: 1,
-          klass: Services::CreateService,
-          method_name: :call,
+          depth: 2,
+          klass: Services::Example,
+          method_name: :method_with_anonymous_args_and_kwargs,
           prefix: "#",
-          parameters: []
+          parameters: [
+            { arg: [1, 2], param: :args },
+            { arg: { x: "foo", y: "bar" }, param: :kwargs },
+            { arg: kind_of(Proc), param: :block }
+          ]
         },
         {
           rank: 3,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :method_a,
+          depth: 3,
+          klass: Services::Example,
+          method_name: :method_forwarding_all_args,
           prefix: "#",
           parameters: [
-            {
-              param: :x,
-              arg: 42
-            },
-            {
-              param: :y,
-              arg: kind_of(Class)
-            }
+            { arg: ["<?>"], param: "..." }
           ]
         },
         {
           rank: 4,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :method_b,
-          prefix: "#",
-          parameters: [
-            {
-              param: :kwarg,
-              arg: 42
-            }
-          ]
-        },
-        {
-          rank: 5,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :method_c,
-          prefix: "#",
-          parameters: [
-            {
-              param: :args,
-              arg: %w[
-                foo
-                bar
-              ]
-            }
-          ]
-        },
-        {
-          rank: 6,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :method_d,
-          prefix: "#",
-          parameters: [
-            {
-              param: :args,
-              arg: [
-                42
-              ]
-            },
-            {
-              param: :kwargs,
-              arg: {
-                kwarg: 43
-              }
-            },
-            {
-              param: :block,
-              arg: kind_of(Proc)
-            }
-          ]
-        },
-        {
-          rank: 7,
-          depth: 3,
-          klass: Services::CreateService,
-          method_name: :method_e,
-          prefix: "#",
-          parameters: [
-            {
-              param: :arg,
-              arg: 42
-            },
-            {
-              param: :kwarg,
-              arg: 43
-            }
-          ]
-        },
-        {
-          rank: 8,
-          depth: 2,
-          klass: User,
-          method_name: :build,
+          depth: 4,
+          klass: Services::Example,
+          method_name: :class_method,
           prefix: ".",
           parameters: [
-            {
-              param: :name,
-              arg: "Jane Doe"
-            }
+            { arg: Integer, param: :klass }
           ]
-        },
-        {
-          rank: 9,
-          depth: 3,
-          klass: User,
-          method_name: :initialize,
-          prefix: "#",
-          parameters: [
-            {
-              param: :name,
-              arg: { name: "Jane Doe" }
-            }
-          ]
-        },
-        {
-          rank: 10,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :method_a,
-          prefix: "#",
-          parameters: [
-            {
-              param: :x,
-              arg: 1
-            },
-            {
-              param: :y,
-              arg: 2
-            }
-          ]
-        },
-        {
-          rank: 11,
-          depth: 2,
-          klass: Services::CreateService,
-          method_name: :validate,
-          prefix: "#",
-          parameters: []
-        },
-        {
-          rank: 12,
-          depth: 2,
-          klass: Services::ServiceHelper,
-          method_name: :validate,
-          prefix: ".",
-          parameters: []
         }
       ]
     end
@@ -245,7 +99,7 @@ RSpec.describe Ariadne::Thread do
     end
 
     it "returns the seams" do
-      expect(seams_data.size).to eq 13
+      expect(seams_data.size).to eq 5
       expectations.each.with_index do |expectation, index|
         expect(seams_data.find { _1[:rank] == index }).to match(expectation)
       end
