@@ -1,72 +1,79 @@
 # frozen_string_literal: true
 
-require "open3"
-require "ariadne/string/color"
+require "colorize"
 
 module Ariadne
   class Log
+    TEXTS = {
+      rank: :white,
+      depth_dashes: :white,
+      class_name: :green,
+      prefix: :blue,
+      method_name: :blue,
+      parameters: :magenta,
+      return_value_type: :yellow
+    }.freeze
+
     def initialize(seam)
       @seam = seam
     end
 
     def call
-      puts text
+      puts log
       write_log
     end
 
     private
 
-    def write_log
-      File.open(Ariadne::Thread::LOG_FILE, "a") { _1.puts text.bleach }
+    def log
+      @log ||=
+        TEXTS.map do |method, color|
+          __send__(method).colorize(color)
+        end.join
     end
 
-    def text
-      @text ||=
-        [
-          rank,
-          " ",
-          depth_dashes,
-          class_name,
-          prefix,
-          method_name,
-          parameters,
-          return_value_type
-        ].join
+    def write_log
+      File.open(Ariadne::Thread::LOG_FILE, "a") { _1.puts log.uncolorize }
     end
 
     def rank
-      @seam.rank.to_s.rjust(4).gray
+      @seam.rank.to_s.rjust(4)
     end
 
     def depth_dashes
-      ("-" * @seam.depth).gray.tap { _1 << " " if @seam.depth.positive? }
+      str = +" "
+      if @seam.depth.positive?
+        str << ("-" * @seam.depth)
+        str << " "
+      end
+      str
     end
 
     def class_name
-      @seam.klass.name.green
+      @seam.klass.name
     end
 
     def prefix
-      @seam.prefix.gray
+      @seam.prefix
     end
 
     def method_name
-      @seam.method_name.to_s.cyan
+      @seam.method_name.to_s
     end
 
     def return_value_type
       value = type(@seam.return_value)
-      " -> #{value}".yellow
+      " -> #{value}"
     end
 
     def parameters
-      return if @seam.parameters.empty?
+      return "" if @seam.parameters.empty?
 
       [
         "(",
         @seam.parameters.flat_map { "#{_1.param}:  #{arg(_1)}" }.join(", "),
         ")"
-      ].join.magenta
+      ].join
     end
 
     def arg(parameter)

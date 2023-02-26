@@ -19,12 +19,11 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"]         = "https://github.com/perangusta/ariadne/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.add_dependency "activesupport"
+  spec.add_dependency "colorize"
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec"
   spec.add_development_dependency "rubocop"
   spec.add_development_dependency "rubocop-rspec"
-  spec.add_development_dependency "yard"
 
   spec.files = Dir.glob("lib/**/*")
 end
